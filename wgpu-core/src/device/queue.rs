@@ -1264,6 +1264,7 @@ impl Queue {
                 texture: dst_raw_webgl,
                 range: dyn_transition.range,
                 usage: dyn_transition.usage,
+                queue_family_ownership_transfer: None,
             }
         });
 
