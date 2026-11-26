@@ -24,6 +24,7 @@ mod linux {
     pub fn all_tests(vec: &mut Vec<GpuTestInitializer>) {
         vec.extend([
             DMABUF_NV12_PLANES_READ_BACK,
+            DMABUF_NV12_WITH_A_PADDED_PITCH_READS_BACK,
             DMABUF_YUYV_READS_BACK,
             DMABUF_CONTENTS_FOLLOW_THE_PRODUCER,
             DMABUF_SAMPLED_TWICE_THE_SAME_WAY,
@@ -240,6 +241,36 @@ mod linux {
                 "an acquire and a release per copy"
             );
         });
+
+    #[gpu_test]
+    static DMABUF_NV12_WITH_A_PADDED_PITCH_READS_BACK: GpuTestConfiguration =
+        GpuTestConfiguration::new()
+            .parameters(params())
+            .run_sync(|ctx| {
+                // Rows padded past the width: the UV plane starts at pitch * height,
+                // not width * height.
+                let (width, height, pitch) = (1918, 1080, 2048);
+                let bytes = pattern(pitch as usize * height as usize * 3 / 2, 3);
+                let (_memfd, dmabuf) = udmabuf(&bytes);
+                let y = desc(TextureFormat::R8Unorm, width, height, 0, pitch);
+                let uv = desc(
+                    TextureFormat::Rg8Unorm,
+                    width / 2,
+                    height / 2,
+                    pitch * u64::from(height),
+                    pitch,
+                );
+                let y_texture = ctx.device.import_dmabuf_texture(dup(&dmabuf), &y).unwrap();
+                let uv_texture = ctx.device.import_dmabuf_texture(dmabuf, &uv).unwrap();
+                assert!(
+                    read_back(&ctx, &y_texture, 1) == plane(&bytes, &y, 1),
+                    "the Y plane"
+                );
+                assert!(
+                    read_back(&ctx, &uv_texture, 2) == plane(&bytes, &uv, 2),
+                    "the UV plane"
+                );
+            });
 
     #[gpu_test]
     static DMABUF_YUYV_READS_BACK: GpuTestConfiguration = GpuTestConfiguration::new()

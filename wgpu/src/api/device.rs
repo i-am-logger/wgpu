@@ -377,7 +377,9 @@ impl Device {
     /// one sampled. Wait for the submission to finish (for example with
     /// [`Queue::on_submitted_work_done`]) before giving the buffer back to its
     /// producer. NV12 is two imports of `dup`ed fds: an [`TextureFormat::R8Unorm`]
-    /// plane, then an [`TextureFormat::Rg8Unorm`] plane at half size.
+    /// plane at offset 0, then an [`TextureFormat::Rg8Unorm`] plane at half size
+    /// and offset `pitch * height`, both at the same pitch (V4L2's
+    /// `bytesperline`, which may exceed the width).
     ///
     /// On success the device owns `fd`; on failure it is closed.
     #[cfg(all(wgpu_core, vulkan, target_os = "linux", feature = "std"))]
