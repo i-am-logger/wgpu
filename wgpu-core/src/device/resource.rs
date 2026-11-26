@@ -1248,13 +1248,30 @@ impl Device {
         desc: &resource::TextureDescriptor,
         initial_state: wgt::TextureUses,
     ) -> Result<Arc<Texture>, resource::CreateTextureError> {
+        self.create_texture_from_hal_owned(
+            hal_texture,
+            desc,
+            initial_state,
+            resource::TextureOwnership::Device,
+        )
+    }
+
+    /// As [`Self::create_texture_from_hal`], for a texture whose memory
+    /// `ownership` names the owner of between uses.
+    pub(crate) fn create_texture_from_hal_owned(
+        self: &Arc<Self>,
+        hal_texture: Box<dyn hal::DynTexture>,
+        desc: &resource::TextureDescriptor,
+        initial_state: wgt::TextureUses,
+        ownership: resource::TextureOwnership,
+    ) -> Result<Arc<Texture>, resource::CreateTextureError> {
         let format_features = self
             .describe_format_features(desc.format)
             .map_err(|error| resource::CreateTextureError::MissingFeatures(desc.format, error))?;
 
         unsafe { self.raw().add_raw_texture(&*hal_texture) };
 
-        let texture = Texture::new(
+        let mut texture = Texture::new(
             self,
             resource::TextureInner::Native { raw: hal_texture },
             conv::map_texture_usage(desc.usage, desc.format.into(), format_features.flags),
@@ -1263,6 +1280,7 @@ impl Device {
             resource::TextureClearMode::None,
             false,
         );
+        texture.ownership = ownership;
 
         let texture = Arc::new(texture);
 

@@ -4932,6 +4932,7 @@ dependencies = [
  "image",
  "itertools 0.14.0",
  "js-sys",
+ "libc",
  "libtest-mimic",
  "log",
  "naga",

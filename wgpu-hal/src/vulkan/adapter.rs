@@ -1062,7 +1062,9 @@ impl PhysicalDeviceFeatures {
             F::VULKAN_EXTERNAL_MEMORY_DMA_BUF,
             caps.supports_extension(khr::external_memory_fd::NAME)
                 && caps.supports_extension(ext::external_memory_dma_buf::NAME)
-                && caps.supports_extension(ext::image_drm_format_modifier::NAME),
+                && caps.supports_extension(ext::image_drm_format_modifier::NAME)
+                && caps.supports_extension(ext::queue_family_foreign::NAME)
+                && caps.device_api_version >= vk::API_VERSION_1_1,
         );
         features.set(
             F::EXPERIMENTAL_MESH_SHADER,
@@ -1354,6 +1356,12 @@ impl PhysicalDeviceProperties {
         // Optional `VK_EXT_image_drm_format_modifier`
         if self.supports_extension(ext::image_drm_format_modifier::NAME) {
             extensions.push(ext::image_drm_format_modifier::NAME);
+        }
+
+        // Optional `VK_EXT_queue_family_foreign`, for acquiring and releasing
+        // images whose memory another device or the kernel also uses.
+        if self.supports_extension(ext::queue_family_foreign::NAME) {
+            extensions.push(ext::queue_family_foreign::NAME);
         }
 
         // Optional `VK_EXT_memory_budget`

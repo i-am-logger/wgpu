@@ -363,6 +363,55 @@ impl Device {
         }
     }
 
+    /// Imports one linear plane of a Linux DMA-buf as a texture that can be
+    /// sampled and copied from, never written. Needs
+    /// [`Features::VULKAN_EXTERNAL_MEMORY_DMA_BUF`] and the Vulkan backend.
+    ///
+    /// Before the driver sees anything, this checks that `fd` is a DMA-buf,
+    /// that `desc.format` is one of [`DMABUF_FORMATS`], and that the plane
+    /// (`desc.offset`, `desc.pitch`, and its size) lies inside the buffer.
+    ///
+    /// The texture's contents belong to the DMA-buf's producer: each command
+    /// buffer that uses it acquires it from the producer first and releases it
+    /// back after, so a frame the producer wrote before the submission is the
+    /// one sampled. Wait for the submission to finish (for example with
+    /// [`Queue::on_submitted_work_done`]) before giving the buffer back to its
+    /// producer. NV12 is two imports of `dup`ed fds: an [`TextureFormat::R8Unorm`]
+    /// plane, then an [`TextureFormat::Rg8Unorm`] plane at half size.
+    ///
+    /// On success the device owns `fd`; on failure it is closed.
+    #[cfg(all(wgpu_core, vulkan, target_os = "linux", feature = "std"))]
+    pub fn import_dmabuf_texture(
+        &self,
+        fd: std::os::fd::OwnedFd,
+        desc: &DmabufTextureDescriptor<'_>,
+    ) -> Result<Texture, ImportDmabufError> {
+        let core_device = self
+            .inner
+            .as_core_opt()
+            .ok_or(ImportDmabufError::NotVulkan)?;
+        let texture = core_device
+            .context
+            .import_dmabuf_texture(core_device, fd, desc)?;
+        Ok(Texture {
+            inner: texture.into(),
+            descriptor: TextureDescriptor {
+                label: None,
+                size: Extent3d {
+                    width: desc.width,
+                    height: desc.height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: desc.format,
+                usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_SRC,
+                view_formats: &[],
+            },
+        })
+    }
+
     /// Wraps a foreign [`webgpu::GpuTexture`] (e.g. a canvas `getCurrentTexture()` result)
     /// as a [`Texture`] without any copy.
     ///

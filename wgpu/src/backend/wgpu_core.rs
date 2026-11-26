@@ -167,6 +167,24 @@ impl ContextWgpuCore {
         }
     }
 
+    /// Import one linear plane of a DMA-buf as a read-only texture.
+    #[cfg(all(vulkan, target_os = "linux", feature = "std"))]
+    pub fn import_dmabuf_texture(
+        &self,
+        device: &CoreDevice,
+        fd: std::os::fd::OwnedFd,
+        desc: &wgc::device::dmabuf::DmabufTextureDescriptor<'_>,
+    ) -> Result<CoreTexture, wgc::device::dmabuf::ImportDmabufError> {
+        let id = self
+            .0
+            .device_import_dmabuf_texture(device.id, fd, desc, None)?;
+        Ok(CoreTexture {
+            context: self.clone(),
+            id,
+            error_sink: Arc::clone(&device.error_sink),
+        })
+    }
+
     /// # Safety
     ///
     /// - `hal_buffer` must be created from `device`.

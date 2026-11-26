@@ -391,6 +391,25 @@ impl Global {
         (id, Some(error))
     }
 
+    /// Import one linear plane of the DMA-buf `fd` as a read-only texture;
+    /// see [`crate::device::resource::Device::import_dmabuf_texture`].
+    #[cfg(all(vulkan, target_os = "linux", feature = "std"))]
+    pub fn device_import_dmabuf_texture(
+        &self,
+        device_id: DeviceId,
+        fd: std::os::fd::OwnedFd,
+        desc: &crate::device::dmabuf::DmabufTextureDescriptor,
+        id_in: Option<id::TextureId>,
+    ) -> Result<id::TextureId, crate::device::dmabuf::ImportDmabufError> {
+        profiling::scope!("Device::import_dmabuf_texture");
+
+        let device = self.hub.devices.get(device_id);
+        let texture = device.import_dmabuf_texture(fd, desc)?;
+        let id = self.hub.textures.prepare(id_in).assign(texture);
+        api_log!("Device::import_dmabuf_texture -> {id:?}");
+        Ok(id)
+    }
+
     /// # Safety
     ///
     /// - `hal_buffer` must be created from `device_id` corresponding raw handle.

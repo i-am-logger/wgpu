@@ -21,6 +21,8 @@ use wgt::{
 };
 
 pub(crate) mod bgl;
+#[cfg(all(vulkan, target_os = "linux", feature = "std"))]
+pub mod dmabuf;
 pub mod global;
 mod life;
 pub mod queue;
